@@ -78,8 +78,36 @@ SCHOOL_DISTRICTS = [
 ]
 
 
-def find_schools_in_school_district_cdata(s):
-    x = re.search('gon.map_points=(.*);gon.sprite_files', s).group(1)
+def find_schools_in_school_district_cdata(cdata):
+    '''
+    this is the worst and hardest part of grabbing data from the district
+    website. this makes some horrible assumptions that are likely to change
+    about the CDATA structure in the html thats delivired.
+
+    it would be MUCH better to be able to do something like:
+
+    ```
+    parsed = {}
+    for data in cdata.split(';'):
+        key, value = data.split('='):
+        parsed[key] = json.loads(value)
+    return parsed
+    ```
+
+    where parsed now contains the key and the json-parsed object
+    it corresponds to in the cdata. the problem with this is that
+    ';' is not a real delimiter, ie it is contained in some of the
+    data elements themselves. this is a common problem and I'm sure there's
+    a solution I'm just not thinking of, but for now, we can just do this horrible
+    hack to pull out the information we want directly
+    '''
+    x = re.search('gon.map_points=(.*);gon.sprite_files', cdata).group(1)
+
+    # in python 3, you can merge two dictionaries with {**a, **b}, and
+    # so we're doing that here to supply the default zIndex value if its
+    # not contained in the args directly.
+    #
+    # see https://stackoverflow.com/questions/38987/how-to-merge-two-dictionaries-in-a-single-expression
     return (School(**{**args, **{'zIndex': 0}}) for args in json.loads(x))
 
 
@@ -106,13 +134,17 @@ def get_schools(district):
         raise Exception('unable to find data line')
 
     for school in find_schools_in_school_district_cdata(data_line):
+        # ok now we have the school. there's some information
+        # we can pull out directly from this, but we probably
+        # want to go to the profileUrl and pull out the rest
+        #
+        # TODO
         print(school)
 
 
 def main():
     for district in SCHOOL_DISTRICTS:
         get_schools(district)
-
 
 
 if __name__ == '__main__':
